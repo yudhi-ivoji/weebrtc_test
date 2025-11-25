@@ -7,7 +7,7 @@ class SimpleWebRTCService {
   MediaStream? localStream;
   MediaStream? remoteStream;
 
-  final RTCVideoRenderer remoteRenderer = RTCVideoRenderer(); // <-- untuk audio
+  final RTCVideoRenderer remoteRenderer = RTCVideoRenderer(); // <-- untuk audios
 
   String? myUserId;
   String? currentCallWith;
