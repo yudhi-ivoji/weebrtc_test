@@ -11,7 +11,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'WebRTC Voice Call',
+      title: 'SUN Internet Call',
       theme: ThemeData(
         primarySwatch: Colors.blue,
         useMaterial3: true,

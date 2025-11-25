@@ -1,5 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
+import 'dart:html' as html; // hanya akan dipakai jika kIsWeb
 
 class SimpleWebRTCService {
   IO.Socket? socket;
@@ -7,7 +9,7 @@ class SimpleWebRTCService {
   MediaStream? localStream;
   MediaStream? remoteStream;
 
-  final RTCVideoRenderer remoteRenderer = RTCVideoRenderer(); // <-- untuk audios
+  final RTCVideoRenderer remoteRenderer = RTCVideoRenderer(); // mobile/video
 
   String? myUserId;
   String? currentCallWith;
@@ -18,25 +20,24 @@ class SimpleWebRTCService {
   Function()? onCallEnded;
   Function(String)? onMessage;
 
-  // ICE config
   final Map<String, dynamic> configuration = {
     'iceServers': [
       {'urls': 'stun:stun.l.google.com:19302'},
-    ],
+      {
+        'urls': 'turn:pefindo.gozila.id:3478?transport=udp',
+        'username': 'admin',
+        'credential': 'password123',
+      }
+    ]
   };
 
-  // Initialize renderer for audio output
   Future<void> initRenderer() async {
     await remoteRenderer.initialize();
   }
 
-  // =======================================================================
-  // CONNECT
-  // =======================================================================
-
+  // =================== CONNECT ===================
   Future<void> connect(String serverUrl, String userId) async {
     myUserId = userId;
-
     await initRenderer();
 
     socket = IO.io(serverUrl, {
@@ -85,10 +86,7 @@ class SimpleWebRTCService {
     socket!.on("call-ended", (_) => endCall());
   }
 
-  // =======================================================================
-  // LOCAL STREAM
-  // =======================================================================
-
+  // =================== LOCAL STREAM ===================
   Future<bool> initLocalStream() async {
     try {
       localStream = await navigator.mediaDevices.getUserMedia({
@@ -96,53 +94,26 @@ class SimpleWebRTCService {
         "video": false,
       });
 
+      if (localStream!.getAudioTracks().isEmpty) {
+        onMessage?.call("❌ Mic tidak aktif");
+        return false;
+      }
+
       print("🎤 Local mic OK");
       return true;
     } catch (e) {
-      onMessage?.call("Mic tidak bisa diakses: $e");
+      onMessage?.call("❌ Mic tidak bisa diakses: $e");
       return false;
     }
   }
 
-  // =======================================================================
-  // MAKE CALL
-  // =======================================================================
-
+  // =================== MAKE CALL ===================
   Future<void> makeCall(String targetUserId) async {
     currentCallWith = targetUserId;
-
     if (!await initLocalStream()) return;
 
     peerConnection = await createPeerConnection(configuration);
-
-    for (var track in localStream!.getTracks()) {
-      peerConnection!.addTrack(track, localStream!);
-    }
-
-    peerConnection!.onIceCandidate = (c) {
-      if (c != null) {
-        socket!.emit("ice-candidate", {
-          "to": targetUserId,
-          "from": myUserId,
-          "candidate": {
-            "candidate": c.candidate,
-            "sdpMid": c.sdpMid,
-            "sdpMLineIndex": c.sdpMLineIndex,
-          }
-        });
-      }
-    };
-
-    peerConnection!.onTrack = (event) {
-      if (event.streams.isNotEmpty) {
-        remoteStream = event.streams.first;
-
-        // Play audio using RTCVideoRenderer
-        remoteRenderer.srcObject = remoteStream;
-
-        print("🔊 Remote audio attached to renderer");
-      }
-    };
+    _setupPeerConnection(targetUserId);
 
     final offer = await peerConnection!.createOffer({
       'offerToReceiveAudio': true,
@@ -158,49 +129,19 @@ class SimpleWebRTCService {
     });
   }
 
-  // =======================================================================
-  // HANDLE INCOMING OFFER
-  // =======================================================================
-
+  // =================== HANDLE INCOMING OFFER ===================
   Future<void> _handleCallOffer(Map offer) async {
     if (!await initLocalStream()) return;
 
     peerConnection = await createPeerConnection(configuration);
-
-    localStream!.getTracks().forEach((track) {
-      peerConnection!.addTrack(track, localStream!);
-    });
-
-    peerConnection!.onIceCandidate = (c) {
-      if (c != null) {
-        socket!.emit("ice-candidate", {
-          "to": currentCallWith,
-          "from": myUserId,
-          "candidate": {
-            "candidate": c.candidate,
-            "sdpMid": c.sdpMid,
-            "sdpMLineIndex": c.sdpMLineIndex,
-          },
-        });
-      }
-    };
-
-    peerConnection!.onTrack = (event) {
-      if (event.streams.isNotEmpty) {
-        remoteStream = event.streams.first;
-        remoteRenderer.srcObject = remoteStream;
-      }
-    };
+    _setupPeerConnection(currentCallWith!);
 
     await peerConnection!.setRemoteDescription(
       RTCSessionDescription(offer["sdp"], offer["type"]),
     );
   }
 
-  // =======================================================================
-  // ANSWER CALL
-  // =======================================================================
-
+  // =================== ANSWER CALL ===================
   Future<void> answerCall() async {
     if (peerConnection == null) return;
 
@@ -220,10 +161,7 @@ class SimpleWebRTCService {
     onCallConnected?.call();
   }
 
-  // =======================================================================
-  // END CALL
-  // =======================================================================
-
+  // =================== END CALL ===================
   void endCall() {
     remoteRenderer.srcObject = null;
 
@@ -236,10 +174,9 @@ class SimpleWebRTCService {
     remoteStream = null;
     peerConnection = null;
 
-    socket?.emit("end-call", {
-      "to": currentCallWith,
-      "from": myUserId,
-    });
+    if (currentCallWith != null) {
+      socket?.emit("end-call", {"to": currentCallWith, "from": myUserId});
+    }
 
     currentCallWith = null;
     onCallEnded?.call();
@@ -249,5 +186,59 @@ class SimpleWebRTCService {
     endCall();
     remoteRenderer.dispose();
     socket?.disconnect();
+  }
+
+  // =================== PRIVATE HELPERS ===================
+  void _setupPeerConnection(String targetUserId) {
+    // Add local tracks
+    localStream!.getTracks().forEach((track) {
+      peerConnection!.addTrack(track, localStream!);
+    });
+
+    // ICE candidate
+    peerConnection!.onIceCandidate = (c) {
+      if (c != null) {
+        print("📡 ICE Candidate → ${c.candidate}");
+        socket!.emit("ice-candidate", {
+          "to": targetUserId,
+          "from": myUserId,
+          "candidate": {
+            "candidate": c.candidate,
+            "sdpMid": c.sdpMid,
+            "sdpMLineIndex": c.sdpMLineIndex,
+          }
+        });
+      }
+    };
+
+    // ICE state logging
+    peerConnection!.onIceConnectionState = (state) {
+      print("🔍 ICE State → $state");
+    };
+
+    // Remote track handling
+    peerConnection!.onTrack = (event) {
+      if (event.streams.isNotEmpty) {
+        remoteStream = event.streams.first;
+
+        // Mobile / Video
+        remoteRenderer.srcObject = remoteStream;
+
+        // Web Audio
+        if (kIsWeb) {
+          try {
+            final audio = html.AudioElement()
+              ..autoplay = true
+              ..controls = false
+              ..srcObject = remoteStream as dynamic;
+            html.document.body!.append(audio);
+          } catch (_) {
+            // skip
+          }
+        }
+
+        print("🔊 Remote audio attached and playing");
+      }
+    };
   }
 }

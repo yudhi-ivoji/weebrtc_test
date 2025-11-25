@@ -1,5 +1,5 @@
-name: voice_call_app
-description: "A new Flutter project."
+name: sun_internet_call_app
+description: "SUN Internet Call."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
