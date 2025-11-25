@@ -6,7 +6,7 @@ class SimpleWebRTCService {
   IO.Socket? socket;
   RTCPeerConnection? peerConnection;
   MediaStream? localStream;
-  MediaStream? remoteStream;
+  MediaStream? remoteStream; // <-- tetap MediaStream
 
   final RTCVideoRenderer remoteRenderer = RTCVideoRenderer();
 
@@ -90,7 +90,11 @@ class SimpleWebRTCService {
 
     try {
       localStream = await navigator.mediaDevices.getUserMedia({
-        'audio': {'echoCancellation': true, 'noiseSuppression': true, 'autoGainControl': true},
+        'audio': {
+          'echoCancellation': true,
+          'noiseSuppression': true,
+          'autoGainControl': true
+        },
         'video': false,
       });
       localStream!.getAudioTracks().forEach((t) => t.enabled = true);
@@ -108,7 +112,10 @@ class SimpleWebRTCService {
     peerConnection = await createPeerConnection(configuration);
     _setupPeerConnection(targetUserId);
 
-    final offer = await peerConnection!.createOffer({'offerToReceiveAudio': true, 'offerToReceiveVideo': false});
+    final offer = await peerConnection!.createOffer({
+      'offerToReceiveAudio': true,
+      'offerToReceiveVideo': false,
+    });
     await peerConnection!.setLocalDescription(offer);
 
     socket!.emit('call-offer', {
@@ -134,7 +141,10 @@ class SimpleWebRTCService {
   Future<void> answerCall() async {
     if (peerConnection == null) return;
 
-    final answer = await peerConnection!.createAnswer({'offerToReceiveAudio': true, 'offerToReceiveVideo': false});
+    final answer = await peerConnection!.createAnswer({
+      'offerToReceiveAudio': true,
+      'offerToReceiveVideo': false,
+    });
     await peerConnection!.setLocalDescription(answer);
 
     socket!.emit('call-answer', {
@@ -147,16 +157,17 @@ class SimpleWebRTCService {
     onMessage?.call('Call answered');
   }
 
+  /// Penting: harus dipanggil saat user klik tombol Answer
   void userGesturePlayAudio() {
-    if (kIsWeb && remoteRenderer.srcObject != null) {
-      remoteRenderer.srcObject!.getAudioTracks().forEach((track) => track.enabled = true);
+    if (kIsWeb && remoteStream != null) {
+      remoteStream!.getAudioTracks().forEach((track) => track.enabled = true);
       print('✅ Audio unmuted via user gesture');
     }
   }
 
   void endCall() {
     localStream?.getTracks().forEach((t) => t.stop());
-    remoteStream?.getTracks()?.forEach((t) => t?.stop());
+    remoteStream?.getAudioTracks()?.forEach((t) => t.enabled = false);
     peerConnection?.close();
 
     localStream = null;
@@ -174,6 +185,8 @@ class SimpleWebRTCService {
   }
 
   void _setupPeerConnection(String targetUserId) {
+    if (localStream == null) return;
+
     localStream!.getTracks().forEach((track) {
       peerConnection!.addTrack(track, localStream!);
     });

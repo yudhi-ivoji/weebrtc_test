@@ -75,6 +75,7 @@ class _VoiceCallPageState extends State<VoiceCallPage> {
       setState(() {
         isInCall = false;
         incomingCallFrom = null;
+         _webRTCService.currentCallWith = null;
       });
     };
 
@@ -122,6 +123,10 @@ class _VoiceCallPageState extends State<VoiceCallPage> {
 
   void _makeCall(String targetUserId) {
     _webRTCService.makeCall(targetUserId);
+      setState(() {
+    isInCall = true; // ✅ set langsung saat menelpon
+    _webRTCService.currentCallWith = targetUserId;
+  });
     _showMessage('Calling $targetUserId...');
   }
 
