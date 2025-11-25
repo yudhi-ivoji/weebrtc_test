@@ -11,7 +11,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'SUN Internet Call',
+      title: 'SUN Internet Call v1.0.0',
       theme: ThemeData(
         primarySwatch: Colors.blue,
         useMaterial3: true,
