@@ -1,6 +1,6 @@
 # voice_call_app
 
-SUN Internet Call.
+A new Flutter project.
 
 ## Getting Started
 

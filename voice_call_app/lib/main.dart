@@ -11,7 +11,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'SUN Internet Call v1.0.0',
+      title: 'SUN Internet Call v1.0.2',
       theme: ThemeData(
         primarySwatch: Colors.blue,
         useMaterial3: true,
@@ -178,6 +178,7 @@ class _VoiceCallPageState extends State<VoiceCallPage> {
             onPressed: () {
               Navigator.pop(context);
               _webRTCService.answerCall();
+              _webRTCService.userGesturePlayAudio();
             },
             icon: const Icon(Icons.call),
             label: const Text('Answer'),
@@ -204,7 +205,7 @@ class _VoiceCallPageState extends State<VoiceCallPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('SUN Voice Call'),
+        title: const Text('SUN Voice Call v1.0.2'),
         backgroundColor: Colors.blue[700],
         foregroundColor: Colors.white,
         elevation: 0,
