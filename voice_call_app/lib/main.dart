@@ -33,7 +33,7 @@ class _VoiceCallPageState extends State<VoiceCallPage> {
   final SimpleWebRTCService _webRTCService = SimpleWebRTCService();
   final TextEditingController _userIdController = TextEditingController();
   final TextEditingController _serverUrlController = TextEditingController(
-    text: 'https://words-impact-believe-immunology.trycloudflare.com ', // Default server URL
+    text: 'https://fdc.gozila.id',
   );
 
   bool isConnected = false;
