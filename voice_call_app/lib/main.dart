@@ -231,7 +231,7 @@ class _VoiceCallPageState extends State<VoiceCallPage> {
                 ),
                 const SizedBox(height: 24),
                 const Text(
-                  'WebRTC Voice Call',
+                  'SUN Voice Call',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 24,
