@@ -204,7 +204,7 @@ class _VoiceCallPageState extends State<VoiceCallPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('WebRTC Voice Call'),
+        title: const Text('SUN Voice Call'),
         backgroundColor: Colors.blue[700],
         foregroundColor: Colors.white,
         elevation: 0,
