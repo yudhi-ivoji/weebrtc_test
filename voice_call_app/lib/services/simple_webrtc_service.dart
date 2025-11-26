@@ -194,16 +194,17 @@ class SimpleWebRTCService {
           },
         });
 
-        // ICE candidate generated → bisa jadi indikasi server berhasil digunakan
-        onIceStatus?.call('ICE candidate from: ${candidate.candidate}');
-      }
-    };
-
-    peerConnection!.onTrack = (event) {
-      if (event.streams.isNotEmpty) {
-        remoteStream = event.streams.first;
-        remoteRenderer.srcObject = remoteStream;
-        logger.i('✅ Remote stream attached');
+        // Tentukan tipe candidate
+        final candidateStr = candidate.candidate!.toLowerCase();
+        if (candidateStr.contains('typ srflx')) {
+          onIceStatus?.call('✅ STUN candidate found');
+        } else if (candidateStr.contains('typ relay')) {
+          onIceStatus?.call('✅ TURN candidate found');
+        } else if (candidateStr.contains('typ host')) {
+          onIceStatus?.call('💡 Host candidate found');
+        } else {
+          onIceStatus?.call('🔹 ICE candidate: ${candidate.candidate}');
+        }
       }
     };
 
@@ -221,6 +222,14 @@ class SimpleWebRTCService {
           break;
         default:
           onIceStatus?.call('ICE state: $state');
+      }
+    };
+
+    peerConnection!.onTrack = (event) {
+      if (event.streams.isNotEmpty) {
+        remoteStream = event.streams.first;
+        remoteRenderer.srcObject = remoteStream;
+        logger.i('✅ Remote stream attached');
       }
     };
   }
