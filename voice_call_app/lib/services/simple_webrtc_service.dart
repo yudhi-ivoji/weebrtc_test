@@ -178,53 +178,18 @@ class SimpleWebRTCService {
   void _setupPeerConnection(String targetUserId) {
     if (localStream == null) return;
 
-    localStream!.getTracks().forEach((track) {
+    // Tambahkan semua track dari localStream
+    for (var track in localStream!.getTracks()) {
       peerConnection!.addTrack(track, localStream!);
-    });
+    }
 
-    peerConnection!.onIceCandidate = (candidate) {
-      if (candidate.candidate != null && candidate.candidate!.isNotEmpty) {
-        socket!.emit('ice-candidate', {
-          'to': targetUserId,
-          'from': myUserId,
-          'candidate': {
-            'candidate': candidate.candidate,
-            'sdpMid': candidate.sdpMid,
-            'sdpMLineIndex': candidate.sdpMLineIndex,
-          },
-        });
+    // ICE Candidate handling
+    peerConnection!.onIceCandidate = (candidate) => _handleIceCandidate(candidate, targetUserId);
 
-        // Tentukan tipe candidate
-        final candidateStr = candidate.candidate!.toLowerCase();
-        if (candidateStr.contains('typ srflx')) {
-          onIceStatus?.call('✅ STUN candidate found');
-        } else if (candidateStr.contains('typ relay')) {
-          onIceStatus?.call('✅ TURN candidate found');
-        } else if (candidateStr.contains('typ host')) {
-          onIceStatus?.call('💡 Host candidate found');
-        } else {
-          onIceStatus?.call('🔹 ICE candidate: ${candidate.candidate}');
-        }
-      }
-    };
+    // ICE Connection State handling
+    peerConnection!.onIceConnectionState = _handleIceConnectionState;
 
-    peerConnection!.onIceConnectionState = (state) {
-      logger.i('ICE Connection State: $state');
-      switch (state) {
-        case RTCIceConnectionState.RTCIceConnectionStateConnected:
-          onIceStatus?.call('✅ ICE connected successfully');
-          break;
-        case RTCIceConnectionState.RTCIceConnectionStateFailed:
-          onIceStatus?.call('❌ ICE failed. Possible STUN/TURN issue');
-          break;
-        case RTCIceConnectionState.RTCIceConnectionStateDisconnected:
-          onIceStatus?.call('⚠️ ICE disconnected');
-          break;
-        default:
-          onIceStatus?.call('ICE state: $state');
-      }
-    };
-
+    // Remote track handling
     peerConnection!.onTrack = (event) {
       if (event.streams.isNotEmpty) {
         remoteStream = event.streams.first;
@@ -232,5 +197,53 @@ class SimpleWebRTCService {
         logger.i('✅ Remote stream attached');
       }
     };
+  }
+
+  // =========================
+  // Refactored helper functions
+  // =========================
+
+  void _handleIceCandidate(RTCIceCandidate? candidate, String targetUserId) {
+    if (candidate == null || candidate.candidate == null || candidate.candidate!.isEmpty) return;
+
+    // Kirim ke signaling server
+    socket?.emit('ice-candidate', {
+      'to': targetUserId,
+      'from': myUserId,
+      'candidate': {
+        'candidate': candidate.candidate,
+        'sdpMid': candidate.sdpMid,
+        'sdpMLineIndex': candidate.sdpMLineIndex,
+      },
+    });
+
+    // Klasifikasi candidate
+    final candidateStr = candidate.candidate!.toLowerCase();
+    if (candidateStr.contains('typ srflx')) {
+      onIceStatus?.call('✅ STUN candidate found');
+    } else if (candidateStr.contains('typ relay')) {
+      onIceStatus?.call('✅ TURN candidate found');
+    } else if (candidateStr.contains('typ host')) {
+      onIceStatus?.call('💡 Host candidate found');
+    } else {
+      onIceStatus?.call('🔹 ICE candidate: ${candidate.candidate}');
+    }
+  }
+
+  void _handleIceConnectionState(RTCIceConnectionState state) {
+    logger.i('ICE Connection State: $state');
+    switch (state) {
+      case RTCIceConnectionState.RTCIceConnectionStateConnected:
+        onIceStatus?.call('✅ ICE connected successfully');
+        break;
+      case RTCIceConnectionState.RTCIceConnectionStateFailed:
+        onIceStatus?.call('❌ ICE failed. Possible STUN/TURN issue');
+        break;
+      case RTCIceConnectionState.RTCIceConnectionStateDisconnected:
+        onIceStatus?.call('⚠️ ICE disconnected');
+        break;
+      default:
+        onIceStatus?.call('ICE state: $state');
+    }
   }
 }

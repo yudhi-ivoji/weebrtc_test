@@ -329,7 +329,7 @@ class _VoiceCallPageState extends State<VoiceCallPage> {
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: SizedBox(
-          height: 60,
+          height: 180,
           child: ListView(
             children: messages.map((m) => Text(m, style: TextStyle(color: Colors.grey[700], fontSize: 11))).toList(),
           ),
