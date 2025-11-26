@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
+import 'package:logger/logger.dart' show Logger;
 import 'package:socket_io_client/socket_io_client.dart' as IO;
+import 'package:sun_internet_call_app/config/app_config.dart' show AppConfig;
 
 class SimpleWebRTCService {
   IO.Socket? socket;
@@ -19,14 +21,12 @@ class SimpleWebRTCService {
   Function()? onCallEnded;
   Function(String)? onMessage;
 
+  var logger = Logger();
+
   final Map<String, dynamic> configuration = {
     'iceServers': [
-      {'urls': 'stun:stun.l.google.com:19302'},
-      {
-        'urls': 'turn:pefindo.gozila.id:3478?transport=udp',
-        'username': 'admin',
-        'credential': 'password123'
-      }
+      {'urls': AppConfig().stunUrl},
+      {'urls': AppConfig().turnUrl, 'username': AppConfig().turnUsername, 'credential': AppConfig().turnPassword},
     ],
     'sdpSemantics': 'unified-plan',
   };
@@ -34,7 +34,7 @@ class SimpleWebRTCService {
   Future<void> initRenderer() async {
     await remoteRenderer.initialize();
     if (kIsWeb) remoteRenderer.muted = false;
-    print('✅ Renderer initialized');
+    logger.i('✅ Renderer initialized');
   }
 
   Future<void> connect(String serverUrl, String userId) async {
@@ -47,7 +47,7 @@ class SimpleWebRTCService {
     });
 
     socket!.onConnect((_) {
-      print('✅ Connected to signaling server');
+      logger.i('✅ Connected to signaling server');
       socket!.emit('register', userId);
       onMessage?.call('Connected to server');
     });
@@ -65,9 +65,7 @@ class SimpleWebRTCService {
     });
 
     socket!.on('call-answer', (data) async {
-      await peerConnection?.setRemoteDescription(
-        RTCSessionDescription(data['answer']['sdp'], data['answer']['type']),
-      );
+      await peerConnection?.setRemoteDescription(RTCSessionDescription(data['answer']['sdp'], data['answer']['type']));
     });
 
     socket!.on('ice-candidate', (data) async {
@@ -90,11 +88,7 @@ class SimpleWebRTCService {
 
     try {
       localStream = await navigator.mediaDevices.getUserMedia({
-        'audio': {
-          'echoCancellation': true,
-          'noiseSuppression': true,
-          'autoGainControl': true
-        },
+        'audio': {'echoCancellation': true, 'noiseSuppression': true, 'autoGainControl': true},
         'video': false,
       });
       localStream!.getAudioTracks().forEach((t) => t.enabled = true);
@@ -112,16 +106,13 @@ class SimpleWebRTCService {
     peerConnection = await createPeerConnection(configuration);
     _setupPeerConnection(targetUserId);
 
-    final offer = await peerConnection!.createOffer({
-      'offerToReceiveAudio': true,
-      'offerToReceiveVideo': false,
-    });
+    final offer = await peerConnection!.createOffer({'offerToReceiveAudio': true, 'offerToReceiveVideo': false});
     await peerConnection!.setLocalDescription(offer);
 
     socket!.emit('call-offer', {
       'to': targetUserId,
       'from': myUserId,
-      'offer': {'sdp': offer.sdp, 'type': offer.type}
+      'offer': {'sdp': offer.sdp, 'type': offer.type},
     });
 
     onMessage?.call('📤 Offer sent to $targetUserId');
@@ -133,18 +124,13 @@ class SimpleWebRTCService {
     peerConnection = await createPeerConnection(configuration);
     _setupPeerConnection(currentCallWith!);
 
-    await peerConnection!.setRemoteDescription(
-      RTCSessionDescription(offer['sdp'], offer['type']),
-    );
+    await peerConnection!.setRemoteDescription(RTCSessionDescription(offer['sdp'], offer['type']));
   }
 
   Future<void> answerCall() async {
     if (peerConnection == null) return;
 
-    final answer = await peerConnection!.createAnswer({
-      'offerToReceiveAudio': true,
-      'offerToReceiveVideo': false,
-    });
+    final answer = await peerConnection!.createAnswer({'offerToReceiveAudio': true, 'offerToReceiveVideo': false});
     await peerConnection!.setLocalDescription(answer);
 
     socket!.emit('call-answer', {
@@ -161,19 +147,22 @@ class SimpleWebRTCService {
   void userGesturePlayAudio() {
     if (kIsWeb && remoteStream != null) {
       remoteStream!.getAudioTracks().forEach((track) => track.enabled = true);
-      print('✅ Audio unmuted via user gesture');
+      logger.i('✅ Audio unmuted via user gesture');
     }
   }
 
   void endCall() {
+    if (currentCallWith != null) {
+      socket?.emit('end-call', {'to': currentCallWith, 'from': myUserId});
+    }
+
     localStream?.getTracks().forEach((t) => t.stop());
-    remoteStream?.getAudioTracks()?.forEach((t) => t.enabled = false);
+    remoteStream?.getAudioTracks().forEach((t) => t.enabled = false);
     peerConnection?.close();
 
     localStream = null;
     remoteStream = null;
     peerConnection = null;
-    currentCallWith = null;
 
     onCallEnded?.call();
   }
@@ -200,7 +189,7 @@ class SimpleWebRTCService {
             'candidate': candidate.candidate,
             'sdpMid': candidate.sdpMid,
             'sdpMLineIndex': candidate.sdpMLineIndex,
-          }
+          },
         });
       }
     };
@@ -209,7 +198,7 @@ class SimpleWebRTCService {
       if (event.streams.isNotEmpty) {
         remoteStream = event.streams.first;
         remoteRenderer.srcObject = remoteStream;
-        print('✅ Remote stream attached');
+        logger.i('✅ Remote stream attached');
       }
     };
   }

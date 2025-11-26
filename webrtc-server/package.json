@@ -2,9 +2,13 @@
   "name": "webrtc-server",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node server.js",
+    "start-pm2": "npx pm2 start server.js --name webrtc-server",
+    "restart-pm2": "npx pm2 restart webrtc-server",
+    "stop-pm2": "npx pm2 stop webrtc-server",
+    "list-pm2": "npx pm2 list"
   },
   "keywords": [],
   "author": "",

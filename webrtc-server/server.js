@@ -8,7 +8,7 @@ const io = require('socket.io')(http, {
   }
 });
 
-const PORT = 3000;
+const PORT = 8192;
 
 // Menyimpan daftar user yang online
 let users = {};
@@ -20,7 +20,7 @@ io.on('connection', (socket) => {
   socket.on('register', (userId) => {
     users[userId] = socket.id;
     console.log(`User ${userId} registered with socket ${socket.id}`);
-    
+
     // Kirim list user yang online ke semua client
     io.emit('users', Object.keys(users));
   });
