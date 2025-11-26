@@ -58,6 +58,9 @@ class _VoiceCallPageState extends State<VoiceCallPage> {
     };
 
     _webRTCService.onMessage = (msg) => _addMessage(msg);
+
+    // ✨ ICE status callback
+    _webRTCService.onIceStatus = (status) => _addMessage(status);
   }
 
   // ---------------------------------------------------------------------------

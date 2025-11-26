@@ -21,6 +21,8 @@ class SimpleWebRTCService {
   Function()? onCallEnded;
   Function(String)? onMessage;
 
+  Function(String)? onIceStatus;
+
   var logger = Logger();
 
   final Map<String, dynamic> configuration = {
@@ -191,6 +193,9 @@ class SimpleWebRTCService {
             'sdpMLineIndex': candidate.sdpMLineIndex,
           },
         });
+
+        // ICE candidate generated → bisa jadi indikasi server berhasil digunakan
+        onIceStatus?.call('ICE candidate from: ${candidate.candidate}');
       }
     };
 
@@ -199,6 +204,23 @@ class SimpleWebRTCService {
         remoteStream = event.streams.first;
         remoteRenderer.srcObject = remoteStream;
         logger.i('✅ Remote stream attached');
+      }
+    };
+
+    peerConnection!.onIceConnectionState = (state) {
+      logger.i('ICE Connection State: $state');
+      switch (state) {
+        case RTCIceConnectionState.RTCIceConnectionStateConnected:
+          onIceStatus?.call('✅ ICE connected successfully');
+          break;
+        case RTCIceConnectionState.RTCIceConnectionStateFailed:
+          onIceStatus?.call('❌ ICE failed. Possible STUN/TURN issue');
+          break;
+        case RTCIceConnectionState.RTCIceConnectionStateDisconnected:
+          onIceStatus?.call('⚠️ ICE disconnected');
+          break;
+        default:
+          onIceStatus?.call('ICE state: $state');
       }
     };
   }
