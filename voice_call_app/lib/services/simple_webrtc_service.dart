@@ -27,8 +27,20 @@ class SimpleWebRTCService {
 
   final Map<String, dynamic> configuration = {
     'iceServers': [
-      {'urls': AppConfig().stunUrl},
-      {'urls': AppConfig().turnUrl, 'username': AppConfig().turnUsername, 'credential': AppConfig().turnPassword},
+      {
+        'urls': AppConfig().stunUrl, // STUN (3478)
+      },
+      {
+        'urls': AppConfig().turnUrl, // TURN (3478, TCP/UDP)
+        'username': AppConfig().turnUsername,
+        'credential': AppConfig().turnPassword,
+      },
+      if (AppConfig().turnTlsUrl.isNotEmpty) // hanya tambah kalau ada
+        {
+          'urls': AppConfig().turnTlsUrl, // TURN over TLS (443)
+          'username': AppConfig().turnUsername,
+          'credential': AppConfig().turnPassword,
+        },
     ],
     'sdpSemantics': 'unified-plan',
   };

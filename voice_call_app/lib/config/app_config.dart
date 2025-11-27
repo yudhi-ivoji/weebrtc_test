@@ -11,9 +11,10 @@ class AppConfig {
   String get appTitle => dotenv.env['APP_TITLE'] ?? 'SUN Voice';
   String get flavor => dotenv.env['FLAVOR'] ?? 'dev';
 
-  // WebRTC
+  // WebRTC (COTURN)
   String get stunUrl => dotenv.env['STUN_URL'] ?? '';
   String get turnUrl => dotenv.env['TURN_URL'] ?? '';
+  String get turnTlsUrl => dotenv.env['TURN_TLS_URL'] ?? '';
   String get turnUsername => dotenv.env['TURN_USERNAME'] ?? '';
   String get turnPassword => dotenv.env['TURN_PASSWORD'] ?? '';
 }
